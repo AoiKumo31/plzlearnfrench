@@ -10,6 +10,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+from aiohttp import web
 import db
 from ai_engine import generate_task, evaluate_response
 
@@ -184,8 +185,24 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text("Please use /start first.")
 
+async def health_check(request):
+    """Simple health check endpoint to satisfy Render's port binding requirement."""
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    """Start dummy web server for Render."""
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"Dummy web server started on port {port}")
+
 def main() -> None:
-    """Start the bot."""
+    """Start the bot and the web server."""
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
@@ -203,6 +220,13 @@ def main() -> None:
 
     # Run the bot until the user presses Ctrl-C
     logger.info("Starting bot polling...")
+    
+    # We must run both the web server and the bot polling
+    import asyncio
+    
+    loop = asyncio.get_event_loop()
+    loop.create_task(start_web_server())
+    
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

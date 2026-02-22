@@ -1,14 +1,14 @@
-# How to Deploy the Telegram Coach to Render (24/7)
+# How to Deploy the Telegram Coach to Render (Free Web Service)
 
-To make your bot run 24/7, we will host it on **Render** (it's free/cheap and very easy). 
+Since Render Blueprints cost money, we will deploy this completely for free as a **Web Service**. 
 
-Render requires the code to live on GitHub, so here is the step-by-step process:
+*Note: Render Web Services require a web server to bind to a port, otherwise the deploy fails. I have updated `bot.py` to run a tiny silent web server alongside the Telegram bot.*
 
 ### Step 1: Push this code to GitHub
 1. Create a free account on [GitHub](https://github.com/) if you don't have one.
 2. In the top right corner of GitHub, click the `+` icon and select **New repository**.
 3. Name it `french-coach-bot` and click **Create repository** (keep it Private).
-4. Do not initialize it with a README. Copy the repository URL (it will look like `https://github.com/vantran/french-coach-bot.git`).
+4. Copy the repository URL (it will look like `https://github.com/vantran/french-coach-bot.git`).
 
 Open a new terminal window on your Mac, go to this project folder, and run these commands to push your code:
 ```bash
@@ -17,25 +17,36 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin <paste-your-github-url-here>
+git remote add origin https://github.com/vantran/french-coach-bot.git
 git push -u origin main
 ```
 
-### Step 2: Set up Render
-1. Create an account on [Render.com](https://render.com/).
-2. In the Render Dashboard, click **New +** and select **Blueprint**.
-   *(Why Blueprint? Because I already wrote a `render.yaml` file in your folder that automatically configures everything!)*
+### Step 2: Set up a Render Web Service
+1. Create a free account on [Render.com](https://render.com/).
+2. In the Render Dashboard, click **New +** and select **Web Service**.
 3. Connect your GitHub account and select your `french-coach-bot` repository.
-4. Render will read the `render.yaml` file and set up a **Background Worker** with a persistent disk for your SQLite database.
+4. Fill out the settings as follows:
+   - **Name:** `french-coach-bot`
+   - **Region:** Pick any
+   - **Branch:** `main`
+   - **Runtime:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python bot.py`
+   - **Instance Type:** `Free`
 
-### Step 3: Add your API Keys (Environment Variables)
-Once the service is created in Render, it will fail to start on the first try because it doesn't have your keys.
-1. On your Render dashboard, click your `french-coach-bot` service.
-2. Go to the **Environment** tab.
-3. Add two environment variables:
-   - Key: `TELEGRAM_BOT_TOKEN` | Value: `8189009046:AAHFQ3ZizybpDNWtMzY...`
-   - Key: `CEREBRAS_API_KEY` | Value: `csk-e62cjkx...`
-4. Click **Save Changes**.
-5. Render will automatically redeploy the bot. 
+### Step 3: Add API Keys (Environment Variables)
+Scroll down to the **Advanced** section (or the Environment tab) and add:
+- Key: `TELEGRAM_BOT_TOKEN` | Value: `8189009046:AAHFQ3ZizybpDNWtMzY3YjrCkGsAuVwZUwE`
+- Key: `CEREBRAS_API_KEY` | Value: `csk-e62cjkxyetwrydxen5t8hft6hhywpyte64dwd38kewxw8nnx`
 
-Once the deploy is green and says "Live", your bot is running 24/7! You can close your laptop.
+### Step 4: Add a Persistent Disk (Important!)
+Since Render wipes the Free tier's memory every time it sleeps, you must mount a disk so it doesn't delete your SQLite database (`french_coach.db`) and erase your streaks!
+1. Under Advanced, click **Add Disk**.
+2. **Name:** `data`
+3. **Mount Path:** `/data`
+4. **Size:** `1 GB`
+5. Go back up to Environment Variables and add one more:
+   - Key: `DB_PATH` | Value: `/data/french_coach.db`
+
+### Step 5: Deploy!
+Click **Create Web Service**. Wait about 2–3 minutes for it to build. Once it says "Live", your bot will run 24/7!
