@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 from aiohttp import web
 import db
-from ai_engine import generate_task, evaluate_response
+from ai_engine import generate_task, evaluate_response, generate_chat_response
 
 # Load environment variables (.env file)
 load_dotenv()
@@ -92,7 +92,7 @@ async def send_daily_tasks_job(context: ContextTypes.DEFAULT_TYPE):
         await send_daily_task_to_user(context.bot, chat_id)
 
 async def handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle incoming messages (assume they are task responses)."""
+    """Handle incoming messages (evaluate task or chat normally)."""
     chat_id = update.effective_user.id
     user_response = update.message.text
     
@@ -109,12 +109,21 @@ async def handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             (chat_id, today)
         ).fetchone()
         
-    if not recent_log:
-        await update.message.reply_text("I haven't assigned you a task today! Use /task to force one.")
-        return
+    # If there is no task or the task is already completed, route to conversational companion
+    if not recent_log or recent_log['user_response']:
+        await context.bot.send_chat_action(chat_id=chat_id, action='typing')
         
-    if recent_log['user_response']:
-        await update.message.reply_text("You have already completed your task for today! See you tomorrow.")
+        # Save user message to history
+        db.save_chat_message(chat_id, "user", user_response)
+        
+        # Get history and purely conversational response
+        history = db.get_recent_chat_history(chat_id, limit=10)
+        bot_reply = await generate_chat_response(history)
+        
+        # Save bot response to history
+        db.save_chat_message(chat_id, "assistant", bot_reply)
+        
+        await update.message.reply_text(bot_reply)
         return
         
     task_assigned = recent_log['task_assigned']

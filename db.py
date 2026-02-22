@@ -57,6 +57,17 @@ def init_db():
                 FOREIGN KEY (chat_id) REFERENCES users(chat_id)
             )
         ''')
+        
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER,
+                role TEXT,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chat_id) REFERENCES users(chat_id)
+            )
+        ''')
 
 def register_user(chat_id: int, username: str) -> bool:
     """Register a new user if they don't exist. Returns True if new user created."""
@@ -153,6 +164,30 @@ def update_vocabulary_review(vocab_id: int, correct: bool):
             SET strength = ?, next_review_date = ? 
             WHERE id = ?
         ''', (strength, next_review, vocab_id))
+
+def save_chat_message(chat_id: int, role: str, content: str):
+    """Save a conversational message to history. role must be 'user' or 'system' or 'assistant'."""
+    with get_db() as db:
+        db.execute('''
+            INSERT INTO chat_history (chat_id, role, content)
+            VALUES (?, ?, ?)
+        ''', (chat_id, role, content))
+
+def get_recent_chat_history(chat_id: int, limit: int = 15) -> list:
+    """Retrieve the last N messages for context window."""
+    with get_db() as db:
+        # We order by descending to get latest, then reverse in Python to put oldest first
+        rows = db.execute('''
+            SELECT role, content FROM chat_history 
+            WHERE chat_id = ? 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        ''', (chat_id, limit)).fetchall()
+        
+        # [{'role': 'user', 'content': 'hi'}]
+        history = [{"role": row["role"], "content": row["content"]} for row in rows]
+        history.reverse()
+        return history
 
 if __name__ == '__main__':
     init_db()

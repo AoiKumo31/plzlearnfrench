@@ -117,6 +117,39 @@ async def evaluate_response(task_text: str, user_response: str) -> EvaluationRes
             adaptation_decision="maintain"
         )
 
+async def generate_chat_response(messages: list) -> str:
+    """
+    Generate a free-form conversational response using chat history.
+    messages: list of dicts like [{"role": "user", "content": "hi"}, ...]
+    """
+    
+    # System prompt specifically for companionship
+    sys_prompt = {
+        "role": "system",
+        "content": (
+            "You are an encouraging, AI conversational companion helping the user learn French. "
+            "You should respond naturally to their messages. If they speak in English, reply in a mix "
+            "of simple French and English. If they speak in French, reply mainly in French, offering "
+            "gentle corrections if they make glaring errors, but prioritize keeping the conversation flowing. "
+            "IMPORTANT: Do not use any emojis in your response."
+        )
+    }
+    
+    # Prepend the system prompt to the history
+    full_messages = [sys_prompt] + messages
+    
+    try:
+        response = await client.chat.completions.create(
+            model="llama3.1-70b",
+            messages=full_messages,
+            temperature=0.6,
+            max_tokens=250
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error generating chat response: {e}")
+        return "Excusez-moi, je suis un peu fatigué. (I'm having trouble connecting right now, let's talk later!)"
+
 if __name__ == '__main__':
     # Simple manual test if run directly (requires API key)
     import asyncio
