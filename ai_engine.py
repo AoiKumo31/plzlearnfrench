@@ -15,13 +15,14 @@ client = AsyncOpenAI(
 
 # Pydantic models for structured output parsing
 class GeneratedTask(BaseModel):
-    task_text: str = Field(description="The French learning task instruction to send to the user. Should be short and clear.")
+    task_text: str = Field(description="The French learning task instruction to send to the user. Should be short and clear. No emojis.")
     target_grammar: str = Field(description="The specific grammar or vocabulary topic focused on.")
     estimated_minutes: int = Field(description="Estimated time to complete the task in minutes (1-15).")
 
 class EvaluationResult(BaseModel):
     score: int = Field(description="Score from 0 to 100 on accuracy and effort.")
-    feedback: str = Field(description="Friendly, encouraging feedback in English with specific corrections.")
+    grammar_analysis: str = Field(description="Clear, concise explanation of grammatical errors made, without emojis.")
+    vocabulary_suggestions: str = Field(description="1-2 alternative vocabulary words or more natural ways to phrase the sentence.")
     corrected_french: str = Field(description="The user's response corrected for perfect grammar/spelling.")
     adaptation_decision: str = Field(description="Must be exactly 'level_up', 'maintain', or 'simplify'.")
 
@@ -32,13 +33,14 @@ async def generate_task(difficulty_level: int, state: str, focus: str = "general
     
     # Define state context
     state_ctx = {
-        "🟢": "The user is doing great! Give them a challenging task.",
-        "🟡": "The user struggled recently or missed a day. Keep the task simple and reinforcing.",
-        "🔴": "The user missed multiple days. Give a very fast, 2-minute 'restart protocol' task to get them back on track."
+        "green": "The user is doing great! Give them a challenging task.",
+        "yellow": "The user struggled recently or missed a day. Keep the task simple and reinforcing.",
+        "red": "The user missed multiple days. Give a very fast, 2-minute 'restart protocol' task to get them back on track."
     }.get(state, "Give a standard task.")
     
     prompt = f"""
-    You are an expert, encouraging French language coach for a Telegram bot.
+    You are an expert, encouraging French language coach for a Telegram bot. 
+    CRITICAL INSTRUCTION: Do not use any emojis anywhere in your response.
     The user's current difficulty level is {difficulty_level}/10 (1=Beginner A1, 10=Fluent C2).
     Their current performance state is '{state}'. Context: {state_ctx}
     Their learning focus is: {focus}.
@@ -56,7 +58,7 @@ async def generate_task(difficulty_level: int, state: str, focus: str = "general
         response = await client.beta.chat.completions.parse(
             model="llama3.1-70b",
             messages=[
-                {"role": "system", "content": "You are a helpful French tutor. Respond completely in JSON matching the schema."},
+                {"role": "system", "content": "You are a helpful French tutor. Respond completely in JSON matching the schema. DO NOT USE EMOJIS."},
                 {"role": "user", "content": prompt}
             ],
             response_format=GeneratedTask,
@@ -78,14 +80,16 @@ async def evaluate_response(task_text: str, user_response: str) -> EvaluationRes
     """
     prompt = f"""
     You are an expert, encouraging French language coach for a Telegram bot.
+    CRITICAL INSTRUCTION: Do not use any emojis anywhere in your response.
     The user was assigned this task: "{task_text}"
     The user submitted this response: "{user_response}"
     
     Evaluate their response. 
     1. Score it 0-100 based on effort and accuracy.
-    2. Provide brief, friendly feedback explaining any mistakes.
-    3. Provide the corrected version of their French.
-    4. Make an adaptation decision:
+    2. Provide a 'grammar_analysis' explaining grammatical mistakes in English (no emojis).
+    3. Provide 'vocabulary_suggestions' showing a more natural or advanced way to phrase it (no emojis).
+    4. Provide the corrected version of their French.
+    5. Make an adaptation decision:
        - 'level_up' if the score > 85 and it was very accurate.
        - 'maintain' if they made some mistakes (score 50-85).
        - 'simplify' if they completely misunderstood, used out-of-bounds translator, or scored < 50.
@@ -95,7 +99,7 @@ async def evaluate_response(task_text: str, user_response: str) -> EvaluationRes
         response = await client.beta.chat.completions.parse(
             model="llama3.1-70b",
             messages=[
-                {"role": "system", "content": "You are an expert French tutor reviewing homework. Respond completely in JSON matching the schema."},
+                {"role": "system", "content": "You are an expert French tutor reviewing homework. Respond completely in JSON matching the schema. DO NOT USE EMOJIS."},
                 {"role": "user", "content": prompt}
             ],
             response_format=EvaluationResult,
@@ -107,7 +111,8 @@ async def evaluate_response(task_text: str, user_response: str) -> EvaluationRes
         # Fallback evaluation
         return EvaluationResult(
             score=70,
-            feedback="Thanks for submitting! (LLM evaluation temporarily unavailable).",
+            grammar_analysis="Unable to generate detailed analysis at this time.",
+            vocabulary_suggestions="Try testing again shortly.",
             corrected_french=user_response,
             adaptation_decision="maintain"
         )
@@ -127,7 +132,8 @@ if __name__ == '__main__':
             "Je a mangé un pomme ce matin."
         )
         print(f"Score: {eval_result.score}")
-        print(f"Feedback: {eval_result.feedback}")
+        print(f"Grammar: {eval_result.grammar_analysis}")
+        print(f"Vocab: {eval_result.vocabulary_suggestions}")
         print(f"Corrected: {eval_result.corrected_french}")
         print(f"Decision: {eval_result.adaptation_decision}")
 
