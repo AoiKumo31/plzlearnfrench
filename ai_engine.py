@@ -56,7 +56,7 @@ async def generate_task(difficulty_level: int, state: str, focus: str = "general
     
     try:
         response = await client.beta.chat.completions.parse(
-            model="llama3.1-70b",
+            model="llama3.1-8b",
             messages=[
                 {"role": "system", "content": "You are a helpful French tutor. Respond completely in JSON matching the schema. DO NOT USE EMOJIS."},
                 {"role": "user", "content": prompt}
@@ -97,7 +97,7 @@ async def evaluate_response(task_text: str, user_response: str) -> EvaluationRes
     
     try:
         response = await client.beta.chat.completions.parse(
-            model="llama3.1-70b",
+            model="llama3.1-8b",
             messages=[
                 {"role": "system", "content": "You are an expert French tutor reviewing homework. Respond completely in JSON matching the schema. DO NOT USE EMOJIS."},
                 {"role": "user", "content": prompt}
