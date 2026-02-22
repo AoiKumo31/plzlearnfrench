@@ -34,19 +34,15 @@ git push -u origin main
    - **Start Command:** `python bot.py`
    - **Instance Type:** `Free`
 
-### Step 3: Add API Keys (Environment Variables)
+### Step 4: Add API Keys (Environment Variables)
 Scroll down to the **Advanced** section (or the Environment tab) and add:
 - Key: `TELEGRAM_BOT_TOKEN` | Value: `8189009046:AAHFQ3ZizybpDNWtMzY3YjrCkGsAuVwZUwE`
 - Key: `CEREBRAS_API_KEY` | Value: `csk-e62cjkxyetwrydxen5t8hft6hhywpyte64dwd38kewxw8nnx`
+- **Key: `PYTHON_VERSION` | Value: `3.10.11` <- CRITICAL FIX**
 
-### Step 4: Add a Persistent Disk (Important!)
-Since Render wipes the Free tier's memory every time it sleeps, you must mount a disk so it doesn't delete your SQLite database (`french_coach.db`) and erase your streaks!
-1. Under Advanced, click **Add Disk**.
-2. **Name:** `data`
-3. **Mount Path:** `/data`
-4. **Size:** `1 GB`
-5. Go back up to Environment Variables and add one more:
-   - Key: `DB_PATH` | Value: `/data/french_coach.db`
+> **🚨 Why Python Version?** Render uses Python 3.14 by default, which fails to build `pydantic`. Setting it to `3.10.11` fixes the build error!
+
+> **Note on Free Hosting:** Render's free tier does not support Persistent Disks. This means your SQLite database will reset if the server restarts. To keep it 100% free, we just accept that your streak might reset occasionally. (If you want to save data forever, let me know and I can switch it to Firebase or Supabase later!)
 
 ### Step 5: Deploy!
 Click **Create Web Service**. Wait about 2–3 minutes for it to build. Once it says "Live", your bot will run 24/7!
