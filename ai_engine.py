@@ -140,7 +140,7 @@ async def generate_chat_response(messages: list) -> str:
     
     try:
         response = await client.chat.completions.create(
-            model="llama3.1-70b",
+            model="llama3.1-8b",
             messages=full_messages,
             temperature=0.6,
             max_tokens=250
