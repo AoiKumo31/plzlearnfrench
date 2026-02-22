@@ -141,6 +141,12 @@ def get_due_vocabulary(chat_id: int) -> list:
         ''', (chat_id, today)).fetchall()
         return [dict(w) for w in words]
 
+def get_vocabulary_by_id(vocab_id: int) -> dict:
+    """Get a vocabulary row by id."""
+    with get_db() as db:
+        row = db.execute('SELECT * FROM vocabulary WHERE id = ?', (vocab_id,)).fetchone()
+        return dict(row) if row else None
+
 def update_vocabulary_review(vocab_id: int, correct: bool):
     """Update strength and calculate next review date based on performance."""
     from datetime import date, timedelta
